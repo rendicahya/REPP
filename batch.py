@@ -1,0 +1,1 @@
+conf = Config("../config.json")
