@@ -294,8 +294,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Apply REPP to a saved predictions file')
     parser.add_argument('--repp_cfg', help='repp cfg filename', type=str)
     parser.add_argument('--predictions_file', help='predictions filename', type=str)
-    parser.add_argument('--predictions_dir', help='predictions directory', type=str)
-    parser.add_argument('--output_dir', help='predictions output directory', type=str)
     parser.add_argument('--from_python_2', help='predictions filename', action='store_true')
     parser.add_argument('--evaluate', help='evaluate motion mAP', action='store_true')
     parser.add_argument('--annotations_filename', help='ILSVRC annotations. Needed for ILSVRC evaluation', required=False, type=str)
@@ -310,6 +308,7 @@ if __name__ == '__main__':
     print(' * Loading REPP cfg')
     repp_params = json.load(open(args.repp_cfg, 'r'))
     print(repp_params)
+    predictions_file_out = args.predictions_file.replace('.pckl', '_repp')
     
     repp = REPP(**repp_params, annotations_filename=args.annotations_filename,
              store_coco=args.store_coco, store_imdb=args.store_imdb or args.evaluate)
@@ -317,59 +316,26 @@ if __name__ == '__main__':
     from tqdm import tqdm
     import sys
     
-    if args.predictions_file:
-        predictions_file_out = args.predictions_file.replace('.pckl', '_repp')
-        total_preds_coco, total_preds_imdb = [], []
-        print(' * Applying repp')
-        if args.evaluate:
-            with open(args.annotations_filename, 'r') as f: annotations = sorted(f.read().splitlines())
-            pbar = tqdm(total=len(annotations), file=sys.stdout)
-        for vid, video_preds in get_video_frame_iterator(args.predictions_file, from_python_2=args.from_python_2):
-            predictions_coco, predictions_imdb = repp(video_preds)
-            total_preds_coco += predictions_coco
-            total_preds_imdb += predictions_imdb
-            if args.evaluate: pbar.update(len(video_preds))
+    total_preds_coco, total_preds_imdb = [], []
+    print(' * Applying repp')
+    if args.evaluate:
+        with open(args.annotations_filename, 'r') as f: annotations = sorted(f.read().splitlines())
+        pbar = tqdm(total=len(annotations), file=sys.stdout)
+    for vid, video_preds in get_video_frame_iterator(args.predictions_file, from_python_2=args.from_python_2):
+        predictions_coco, predictions_imdb = repp(video_preds)
+        total_preds_coco += predictions_coco
+        total_preds_imdb += predictions_imdb
+        if args.evaluate: pbar.update(len(video_preds))
 
-            
-        if args.store_imdb:
-            print(' * Dumping predictions with the IMDB format:', predictions_file_out + '_imdb.txt')
-            with open(predictions_file_out + '_imdb.txt', 'w') as f:
-                for p in total_preds_imdb: f.write(p + '\n')
+        
+    if args.store_imdb:
+        print(' * Dumping predictions with the IMDB format:', predictions_file_out + '_imdb.txt')
+        with open(predictions_file_out + '_imdb.txt', 'w') as f:
+            for p in total_preds_imdb: f.write(p + '\n')
 
-        if args.store_coco:
-            print(' * Dumping predictions with the COCO format:', predictions_file_out + '_coco.json')
-            json.dump(total_preds_coco, open(predictions_file_out + '_coco.json', 'w'))
-    elif args.predictions_dir:
-        import glob
-        import os
-        import warnings
-
-        warnings.filterwarnings("ignore")
-        for file in glob.glob(f'{args.predictions_dir}/**/*.pckl'):
-            action, filename = file.split('/')[-2:]
-            total_preds_coco, total_preds_imdb = [], []
-            print(' * Applying repp')
-            if args.evaluate:
-                with open(args.annotations_filename, 'r') as f: annotations = sorted(f.read().splitlines())
-                pbar = tqdm(total=len(annotations), file=sys.stdout)
-            for vid, video_preds in get_video_frame_iterator(file, from_python_2=args.from_python_2):
-                predictions_coco, predictions_imdb = repp(video_preds)
-                total_preds_coco += predictions_coco
-                total_preds_imdb += predictions_imdb
-                if args.evaluate: pbar.update(len(video_preds))
-
-            predictions_file_out = os.path.join(args.output_dir, action, filename.replace('.pckl', '_repp'))
-            os.makedirs(os.path.dirname(predictions_file_out), exist_ok=True)
-
-            if args.store_imdb:
-                print(' * Dumping predictions with the IMDB format:', predictions_file_out + '_imdb.txt')
-                with open(predictions_file_out + '_imdb.txt', 'w') as f:
-                    for p in total_preds_imdb: f.write(p + '\n')
-
-            if args.store_coco:
-                print(' * Dumping predictions with the COCO format:', predictions_file_out + '_coco.json')
-                json.dump(total_preds_coco, open(predictions_file_out + '_coco.json', 'w'))
-
+    if args.store_coco:
+        print(' * Dumping predictions with the COCO format:', predictions_file_out + '_coco.json')
+        json.dump(total_preds_coco, open(predictions_file_out + '_coco.json', 'w'))
 
 
     if args.evaluate:
