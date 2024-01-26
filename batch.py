@@ -27,40 +27,40 @@ assert_that(repp_conf).is_file().is_readable()
 
 if generate_video:
     video_root = Path.cwd().parent / conf.repp.video.path
-    output_video_root = Path.cwd().parent / conf.repp.output.video.path
+    video_out_root = Path.cwd().parent / conf.repp.output.video.path
+    video_out_ext = conf.repp.output.video.ext
 
     assert_that(video_root).is_directory().is_readable()
+    assert_that(video_out_ext).is_type_of(str).matches(r"^\.[a-zA-Z]{3}$")
 
 warnings.filterwarnings("ignore")
 
 bar = tqdm(total=n_files)
 
-for file in input_dir.glob("**/*.pckl"):
-    bar.set_description(file.name)
+for pckl in input_dir.glob("**/*.pckl"):
+    bar.set_description(pckl.name)
 
-    action = file.parent.name
+    action = pckl.parent.name
     total_preds = []
 
-    for vid, video_preds in get_video_frame_iterator(file):
+    for vid, video_preds in get_video_frame_iterator(pckl):
         preds_coco, _ = repp(video_preds)
         total_preds += preds_coco
 
     if generate_video:
-        video_name = file.with_suffix(".avi").name
+        video_name = pckl.with_suffix(".avi").name
         video_path = video_root / action / video_name
 
         assert_that(video_path).is_file().is_readable()
 
-        output_video_path = (output_video_root / action / video_name).with_suffix(
-            conf.repp.output.video.ext
-        )
         vid_info = video_info(video_path)
+        video_width, video_height = vid_info["height"], vid_info["width"]
         frames = video_frames(video_path, reader=conf.repp.video.reader)
         output_frames = []
 
         for i, frame in enumerate(frames):
             boxes = [item["bbox"] for item in total_preds if int(item["image_id"]) == i]
-            mask = np.zeros((vid_info["height"], vid_info["width"]))
+            mask = np.zeros((video_width, video_height))
 
             for box in boxes:
                 x1, y1, w, h = [round(v) for v in box]
@@ -69,11 +69,15 @@ for file in input_dir.glob("**/*.pckl"):
 
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 0), 2)
 
-            mask_out_path = output_dir / action / file.stem / f"{i:05}.png"
+            mask_out_path = output_dir / action / pckl.stem / f"{i:05}.png"
 
             mask_out_path.parent.mkdir(exist_ok=True, parents=True)
-            cv2.imwrite(str(mask_out_path), mask)
             output_frames.append(frame)
+            cv2.imwrite(str(mask_out_path), mask)
+
+        output_video_path = (
+            video_out_root / action / pckl.with_suffix(video_out_ext).name
+        )
 
         output_video_path.parent.mkdir(parents=True, exist_ok=True)
         frames_to_video(
