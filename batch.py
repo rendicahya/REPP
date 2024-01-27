@@ -13,21 +13,23 @@ from repp_utils import get_video_frame_iterator
 from tqdm import tqdm
 
 conf = Config("../config.json")
-input_dir = Path.cwd().parent / conf.unidet.select.output.dump.path
-output_dir = Path.cwd().parent / conf.repp.output.mask.path
+project_root = Path.cwd().parent
+pckl_in_dir = project_root / conf.unidet.select.output.dump.path
+mask_out_dir = project_root / conf.repp.output.mask.path
 repp_conf = conf.repp.configuration
 
-n_files = count_files(input_dir, ext=".pckl")
+n_files = count_files(pckl_in_dir, ext=".pckl")
 repp_params = json.load(open(repp_conf, "r"))
 repp = REPP(**repp_params, store_coco=True)
 generate_video = conf.repp.output.video.generate
 
-assert_that(input_dir).is_directory().is_readable()
+assert_that(pckl_in_dir).is_directory().is_readable()
 assert_that(repp_conf).is_file().is_readable()
 
 if generate_video:
-    video_root = Path.cwd().parent / conf.repp.video.path
-    video_out_root = Path.cwd().parent / conf.repp.output.video.path
+    video_root = project_root / conf.repp.input.video.path
+    video_in_ext = conf.repp.input.video.ext
+    video_out_root = project_root / conf.repp.output.video.path
     video_out_ext = conf.repp.output.video.ext
 
     assert_that(video_root).is_directory().is_readable()
@@ -37,7 +39,7 @@ warnings.filterwarnings("ignore")
 
 bar = tqdm(total=n_files)
 
-for pckl in input_dir.glob("**/*.pckl"):
+for pckl in pckl_in_dir.glob("**/*.pckl"):
     bar.set_description(pckl.stem)
 
     action = pckl.parent.name
@@ -48,19 +50,19 @@ for pckl in input_dir.glob("**/*.pckl"):
         total_preds += preds_coco
 
     if generate_video:
-        video_name = pckl.with_suffix(".avi").name
+        video_name = pckl.with_suffix(video_in_ext).name
         video_path = video_root / action / video_name
 
         assert_that(video_path).is_file().is_readable()
 
         vid_info = video_info(video_path)
         video_width, video_height = vid_info["height"], vid_info["width"]
-        frames = video_frames(video_path, reader=conf.repp.video.reader)
+        frames = video_frames(video_path, reader=conf.repp.input.video.reader)
         output_frames = []
 
         for i, frame in enumerate(frames):
             boxes = [item["bbox"] for item in total_preds if int(item["image_id"]) == i]
-            mask = np.zeros((video_width, video_height))
+            mask = np.zeros((video_width, video_height), np.uint8)
 
             for box in boxes:
                 x1, y1, w, h = [round(v) for v in box]
@@ -69,7 +71,7 @@ for pckl in input_dir.glob("**/*.pckl"):
 
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 0), 2)
 
-            mask_out_path = output_dir / action / pckl.stem / f"{i:05}.png"
+            mask_out_path = mask_out_dir / action / pckl.stem / f"{i:05}.png"
 
             mask_out_path.parent.mkdir(exist_ok=True, parents=True)
             output_frames.append(frame)
