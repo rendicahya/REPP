@@ -33,7 +33,7 @@ if generate_video:
     video_out_ext = conf.repp.output.video.ext
 
     assert_that(video_root).is_directory().is_readable()
-    assert_that(video_out_ext).is_type_of(str).matches(r"^\.[a-zA-Z]{3}$")
+    assert_that(video_out_ext).is_type_of(str).matches(r"^\.[a-zA-Z0-9]{3}$")
 
 warnings.filterwarnings("ignore")
 
