@@ -55,7 +55,7 @@ for pckl in pckl_in_dir.glob("**/*.pckl"):
         continue
 
     vid_info = video_info(video_path)
-    vid_width, vid_height = vid_info["height"], vid_info["width"]
+    vid_height, vid_width = vid_info["height"], vid_info["width"]
     n_frames = vid_info["n_frames"]
 
     if bundle_mask:
@@ -74,7 +74,7 @@ for pckl in pckl_in_dir.glob("**/*.pckl"):
         boxes = [item["bbox"] for item in total_preds if int(item["image_id"]) == f]
 
         if not bundle_mask:
-            mask = np.zeros((vid_width, vid_height), np.uint8)
+            mask = np.zeros((vid_height, vid_width), np.uint8)
             mask_out_path = mask_out_dir / action / pckl.stem / f"{i:05}.png"
 
         if generate_video:
