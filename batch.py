@@ -22,7 +22,6 @@ n_files = count_files(pckl_in_dir, ext=".pckl")
 repp_params = json.load(open(repp_conf, "r"))
 repp = REPP(**repp_params, store_coco=True)
 generate_video = conf.repp.output.video.generate
-bundle_mask = conf.repp.output.mask.bundle
 video_in_ext = conf.repp.input.video.ext
 video_in_root = project_root / conf.repp.input.video.path
 
@@ -56,10 +55,8 @@ for pckl in pckl_in_dir.glob("**/*.pckl"):
     vid_info = video_info(video_path)
     vid_height, vid_width = vid_info["height"], vid_info["width"]
     n_frames = vid_info["n_frames"]
-
-    if bundle_mask:
-        mask_bundle = np.zeros((n_frames, vid_height, vid_width), np.uint8)
-        mask_out_path = mask_out_dir / action / pckl.stem
+    mask_cube = np.zeros((n_frames, vid_height, vid_width), np.uint8)
+    mask_out_path = mask_out_dir / action / pckl.stem
 
     if generate_video:
         frames = video_frames(video_path, reader=conf.repp.input.video.reader)
@@ -72,21 +69,13 @@ for pckl in pckl_in_dir.glob("**/*.pckl"):
     for f in range(n_frames):
         boxes = [item["bbox"] for item in total_preds if int(item["image_id"]) == f]
 
-        if not bundle_mask:
-            mask = np.zeros((vid_height, vid_width), np.uint8)
-            mask_out_path = mask_out_dir / action / pckl.stem / f"{i:05}.png"
-
         if generate_video:
             frame = next(frames)
 
         for box in boxes:
             x1, y1, w, h = [round(v) for v in box]
             x2, y2 = x1 + w, y1 + h
-
-            if bundle_mask:
-                mask_bundle[f, y1:y2, x1:x2] = 255
-            else:
-                mask[y1:y2, x1:x2] = 255
+            mask_cube[f, y1:y2, x1:x2] = 255
 
             if generate_video:
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 0), 2)
@@ -96,11 +85,7 @@ for pckl in pckl_in_dir.glob("**/*.pckl"):
         if generate_video:
             out_frames.append(frame)
 
-        if not bundle_mask:
-            cv2.imwrite(str(mask_out_path), mask)
-
-    if bundle_mask:
-        np.savez_compressed(mask_out_path, mask_bundle)
+    np.savez_compressed(mask_out_path, mask_cube)
 
     if generate_video:
         video_out_path = video_out_root / action / pckl.with_suffix(video_out_ext).name
