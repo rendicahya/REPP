@@ -90,11 +90,11 @@ for pckl in pckl_in_dir.glob("**/*.pckl"):
             if generate_videos:
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 0), 2)
 
-        mask_out_path.parent.mkdir(exist_ok=True, parents=True)
 
         if generate_videos:
             out_frames.append(frame)
 
+    mask_out_path.parent.mkdir(exist_ok=True, parents=True)
     np.savez_compressed(mask_out_path, mask_cube)
 
     if generate_videos:
