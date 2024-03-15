@@ -14,32 +14,27 @@ from tqdm import tqdm
 
 conf = Config("../config.json")
 root = Path.cwd().parent
-pckl_in_dir = (
-    root
-    / "data"
-    / conf.active.dataset
-    / conf.active.detector
-    / "select"
-    / conf.active.mode
-    / "dump"
-)
-mask_out_dir = root / "data" / conf.active.dataset / "REPP" / conf.active.mode / "mask"
+dataset = conf.active.dataset
+mode = conf.active.mode
+pckl_in_dir = root / "data" / dataset / conf.active.detector / "select" / mode / "dump"
+mask_out_dir = root / "data" / dataset / "REPP" / mode / "mask"
 repp_conf = conf.repp.configuration
 
 n_files = count_files(pckl_in_dir, ext=".pckl")
 repp_params = json.load(open(repp_conf, "r"))
 repp = REPP(**repp_params, store_coco=True)
 generate_videos = conf.repp.output.video.generate
-video_in_ext = conf[conf.active.dataset].ext
-video_in_dir = root / conf[conf.active.dataset].path
+video_in_ext = conf[dataset].ext
+video_in_dir = root / conf[dataset].path
+
+print("Dataset:", dataset)
+print("Mode:", mode)
 
 assert_that(pckl_in_dir).is_directory().is_readable()
 assert_that(repp_conf).is_file().is_readable()
 
 if generate_videos:
-    video_out_dir = (
-        root / "data" / conf.active.dataset / "REPP" / conf.active.mode / "videos"
-    )
+    video_out_dir = root / "data" / dataset / "REPP" / mode / "videos"
     video_out_ext = conf.repp.output.video.ext
 
     assert_that(video_in_dir).is_directory().is_readable()
@@ -89,7 +84,6 @@ for pckl in pckl_in_dir.glob("**/*.pckl"):
 
             if generate_videos:
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 0), 2)
-
 
         if generate_videos:
             out_frames.append(frame)
