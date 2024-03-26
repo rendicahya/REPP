@@ -16,8 +16,29 @@ conf = Config("../config.json")
 root = Path.cwd().parent
 dataset = conf.active.dataset
 mode = conf.active.mode
-pckl_in_dir = root / "data" / dataset / conf.active.detector / "select" / mode / "dump"
-mask_out_dir = root / "data" / dataset / "REPP" / mode / "mask"
+relevancy_model = conf.relevancy.active.method
+relevancy_threshold = conf.relevancy.active.threshold
+pckl_in_dir = (
+    root
+    / "data"
+    / dataset
+    / conf.active.detector
+    / "select"
+    / mode
+    / "dump"
+    / relevancy_model
+    / str(relevancy_threshold)
+)
+mask_out_dir = (
+    root
+    / "data"
+    / dataset
+    / "REPP"
+    / mode
+    / "mask"
+    / relevancy_model
+    / str(relevancy_threshold)
+)
 repp_conf = conf.repp.configuration
 
 n_files = count_files(pckl_in_dir, ext=".pckl")
