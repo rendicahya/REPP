@@ -65,8 +65,6 @@ warnings.filterwarnings("ignore")
 bar = tqdm(total=n_files)
 
 for pckl in pckl_in_dir.glob("**/*.pckl"):
-    bar.set_description(pckl.stem[:50].ljust(50))
-
     action = pckl.parent.name
     total_preds = []
 
