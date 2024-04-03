@@ -17,6 +17,7 @@ dataset = conf.active.dataset
 mode = conf.active.mode
 relevancy_model = conf.relevancy.active.method
 relevancy_threshold = conf.relevancy.active.threshold
+smoothing = conf.active.smooth_mask.enabled
 pckl_in_dir = (
     root
     / "data"
@@ -34,7 +35,7 @@ mask_out_dir = (
     / dataset
     / "REPP"
     / mode
-    / "mask"
+    / ("mask-smooth" if smoothing else "mask")
     / relevancy_model
     / str(relevancy_threshold)
 )
@@ -46,9 +47,16 @@ repp = REPP(**repp_params, store_coco=True)
 generate_videos = conf.repp.output.video.generate
 video_in_ext = conf[dataset].ext
 video_in_dir = root / conf[dataset].path
+gaussian_size = conf.active.smooth_mask.gaussian_size
 
 print("Dataset:", dataset)
 print("Mode:", mode)
+print("Smoothing:", smoothing)
+print("Generate videos:", generate_videos)
+print("Relevancy model:", relevancy_model)
+print("Relevancy thresh.:", relevancy_threshold)
+print("Input:", pckl_in_dir)
+print("Output:", mask_out_dir)
 
 assert_that(pckl_in_dir).is_directory().is_readable()
 assert_that(repp_conf).is_file().is_readable()
@@ -99,6 +107,11 @@ for pckl in pckl_in_dir.glob("**/*.pckl"):
             x1, y1, w, h = [round(v) for v in box]
             x2, y2 = x1 + w, y1 + h
             mask_cube[f, y1:y2, x1:x2] = 255
+
+            if smoothing:
+                mask_cube[f] = cv2.GaussianBlur(
+                    mask_cube[f], (gaussian_size, gaussian_size), 0
+                )
 
             if generate_videos:
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 0), 2)
