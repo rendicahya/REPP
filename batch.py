@@ -14,34 +14,28 @@ from tqdm import tqdm
 
 root = Path.cwd().parent
 dataset = conf.active.dataset
+detector = conf.active.detector
 mode = conf.active.mode
 relevancy_model = conf.relevancy.active.method
 relevancy_threshold = conf.relevancy.active.threshold
 smoothing = conf.active.smooth_mask.enabled
-pckl_in_dir = (
-    root
-    / "data"
-    / dataset
-    / conf.active.detector
-    / "select"
-    / mode
-    / "dump"
-    / relevancy_model
-    / str(relevancy_threshold)
-)
-mask_out_dir = (
-    root
-    / "data"
-    / dataset
-    / "REPP"
-    / mode
-    / ("mask-smooth" if smoothing else "mask")
-    / relevancy_model
-    / str(relevancy_threshold)
-)
-repp_conf = conf.repp.configuration
 
-n_files = count_files(pckl_in_dir, ext=".pckl")
+bypass_object_selection = conf.active.bypass_object_selection
+method = "detect" if bypass_object_selection else "select"
+method_dir = root / "data" / dataset / detector / method
+
+if method == "detect":
+    pckl_in_dir = method_dir / "dump"
+    mask_out_dir = method_dir / "REPP/mask"
+elif method == "select":
+    pckl_in_dir = method_dir / mode / "dump"
+    mask_out_dir = method_dir / mode / "REPP/mask"
+
+    if mode == "intercutmix":
+        pckl_in_dir = pckl_in_dir / relevancy_model / relevancy_threshold
+        mask_out_dir = mask_out_dir / relevancy_model / relevancy_threshold
+
+repp_conf = conf.repp.configuration
 repp_params = json.load(open(repp_conf, "r"))
 repp = REPP(**repp_params, store_coco=True)
 generate_videos = conf.repp.output.video.generate
@@ -51,7 +45,7 @@ gaussian_size = conf.active.smooth_mask.gaussian_size
 
 print("Dataset:", dataset)
 print("Mode:", mode)
-print("Smoothing:", smoothing)
+print("Bypass object selection:", bypass_object_selection)
 print("Generate videos:", generate_videos)
 print("Relevancy model:", relevancy_model)
 print("Relevancy thresh.:", relevancy_threshold)
@@ -70,6 +64,7 @@ if generate_videos:
 
 warnings.filterwarnings("ignore")
 
+n_files = count_files(pckl_in_dir, ext=".pckl")
 bar = tqdm(total=n_files)
 
 for pckl in pckl_in_dir.glob("**/*.pckl"):
