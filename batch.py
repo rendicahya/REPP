@@ -20,8 +20,8 @@ relevancy_model = conf.relevancy.active.method
 relevancy_threshold = conf.relevancy.active.threshold
 smoothing = conf.active.smooth_mask.enabled
 
-bypass_object_selection = conf.active.bypass_object_selection
-method = "detect" if bypass_object_selection else "select"
+object_selection = conf.active.object_selection
+method = "select" if object_selection else "detect"
 method_dir = root / "data" / dataset / detector / method
 
 if method == "detect":
@@ -45,7 +45,7 @@ gaussian_size = conf.active.smooth_mask.gaussian_size
 
 print("Dataset:", dataset)
 print("Mode:", mode)
-print("Bypass object selection:", bypass_object_selection)
+print("Object selection:", object_selection)
 print("Generate videos:", generate_videos)
 print("Relevancy model:", relevancy_model)
 print("Relevancy thresh.:", relevancy_threshold)
