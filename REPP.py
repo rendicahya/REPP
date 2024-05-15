@@ -51,10 +51,10 @@ class REPP():
         elif self.distance_func == 'logreg':
              if self.appearance_matching:
                  print('Loading clf matching model:', './REPP_models/matching_model_logreg_appearance.pckl')
-                 self.clf_match, self.matching_feats = pickle.load(open('./REPP_models/matching_model_logreg_appearance.pckl', 'rb'))
+                 self.clf_match, self.matching_feats = pickle.load(open('./REPP/REPP_models/matching_model_logreg_appearance.pckl', 'rb'))
              else:
                  print('Loading clf matching model:', './REPP_models/matching_model_logreg.pckl')
-                 self.clf_match, self.matching_feats = pickle.load(open('./REPP_models/matching_model_logreg.pckl', 'rb'))
+                 self.clf_match, self.matching_feats = pickle.load(open('./REPP/REPP_models/matching_model_logreg.pckl', 'rb'))
              self.match_func = self.distance_logreg
         else: raise ValueError('distance_func not recognized:', self.distance_func)
         

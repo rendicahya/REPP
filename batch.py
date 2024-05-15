@@ -1,7 +1,12 @@
+import sys
+
+sys.path.append(".")
+
 import json
 import warnings
 from pathlib import Path
 
+import click
 import cv2
 import numpy as np
 from assertpy.assertpy import assert_that
@@ -12,7 +17,7 @@ from REPP import REPP
 from repp_utils import get_video_frame_iterator
 from tqdm import tqdm
 
-root = Path.cwd().parent
+root = Path.cwd()
 dataset = conf.active.dataset
 detector = conf.active.detector
 mode = conf.active.mode
@@ -32,8 +37,8 @@ elif method == "select":
     mask_out_dir = method_dir / mode / "REPP/mask"
 
     if mode == "intercutmix":
-        pckl_in_dir = pckl_in_dir / relevancy_model / relevancy_threshold
-        mask_out_dir = mask_out_dir / relevancy_model / relevancy_threshold
+        pckl_in_dir = pckl_in_dir / relevancy_model / str(relevancy_threshold)
+        mask_out_dir = mask_out_dir / relevancy_model / str(relevancy_threshold)
 
 repp_conf = conf.repp.configuration
 repp_params = json.load(open(repp_conf, "r"))
@@ -43,17 +48,12 @@ video_in_ext = conf[dataset].ext
 video_in_dir = root / conf[dataset].path
 gaussian_size = conf.active.smooth_mask.gaussian_size
 
-print("Dataset:", dataset)
-print("Mode:", mode)
-print("Object selection:", object_selection)
-print("Generate videos:", generate_videos)
-print("Relevancy model:", relevancy_model)
-print("Relevancy thresh.:", relevancy_threshold)
-print("Input:", pckl_in_dir)
-print("Output:", mask_out_dir)
-
 assert_that(pckl_in_dir).is_directory().is_readable()
 assert_that(repp_conf).is_file().is_readable()
+
+print("Input:", pckl_in_dir.relative_to(root))
+print("Output:", mask_out_dir.relative_to(root))
+print("Generate videos:", generate_videos)
 
 if generate_videos:
     video_out_dir = root / "data" / dataset / "REPP" / mode / "videos"
@@ -61,6 +61,11 @@ if generate_videos:
 
     assert_that(video_in_dir).is_directory().is_readable()
     assert_that(video_out_ext).is_type_of(str).matches(r"^\.[a-zA-Z0-9]{3}$")
+
+    print("Video output:", video_out_dir)
+
+if not click.confirm("\nDo you want to continue?", show_default=True):
+    exit("Aborted.")
 
 warnings.filterwarnings("ignore")
 
