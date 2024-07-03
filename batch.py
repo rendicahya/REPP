@@ -21,8 +21,8 @@ root = Path.cwd()
 dataset = conf.active.dataset
 detector = conf.active.detector
 mode = conf.active.mode
-relevancy_model = conf.relevancy.active.method
-relevancy_threshold = conf.relevancy.active.threshold
+relevancy_model = conf.active.relevancy.method
+relevancy_threshold = conf.active.relevancy.threshold
 smoothing = conf.active.smooth_mask.enabled
 
 object_selection = conf.active.object_selection
