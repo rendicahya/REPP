@@ -8,11 +8,12 @@ from pathlib import Path
 
 import click
 import cv2
+import mmcv
 import numpy as np
 from assertpy.assertpy import assert_that
 from config import settings as conf
 from python_file import count_files
-from python_video import frames_to_video, video_frames, video_info
+from python_video import frames_to_video
 from REPP import REPP
 from repp_utils import get_video_frame_iterator
 from tqdm import tqdm
@@ -28,13 +29,16 @@ smoothing = conf.active.smooth_mask.enabled
 object_selection = conf.active.object_selection
 method = "select" if object_selection else "detect"
 method_dir = root / "data" / dataset / detector / method
+video_out_ext = conf.repp.output.video.ext
 
 if method == "detect":
     pckl_in_dir = method_dir / "dump"
     mask_out_dir = method_dir / "REPP/mask"
+    video_out_dir = root / "data" / dataset / detector / method / "REPP/videos"
 elif method == "select":
     pckl_in_dir = method_dir / mode / "dump"
     mask_out_dir = method_dir / mode / "REPP/mask"
+    video_out_dir = root / "data" / dataset / detector / method / mode / "REPP/videos"
 
     if mode == "intercutmix":
         pckl_in_dir = pckl_in_dir / relevancy_model / str(relevancy_threshold)
@@ -53,16 +57,12 @@ assert_that(repp_conf).is_file().is_readable()
 
 print("Input:", pckl_in_dir.relative_to(root))
 print("Output:", mask_out_dir.relative_to(root))
-print("Generate videos:", generate_videos)
 
 if generate_videos:
-    video_out_dir = root / "data" / dataset / "REPP" / mode / "videos"
-    video_out_ext = conf.repp.output.video.ext
-
     assert_that(video_in_dir).is_directory().is_readable()
     assert_that(video_out_ext).is_type_of(str).matches(r"^\.[a-zA-Z0-9]{3}$")
 
-    print("Video output:", video_out_dir)
+    print(f"Video output: {video_out_dir.relative_to(root)}")
 
 if not click.confirm("\nDo you want to continue?", show_default=True):
     exit("Aborted.")
@@ -83,15 +83,12 @@ for pckl in pckl_in_dir.glob("**/*.pckl"):
         print("Video not found:", video_path)
         continue
 
-    vid_info = video_info(video_path)
-    vid_height, vid_width = vid_info["height"], vid_info["width"]
-    n_frames = vid_info["n_frames"]
+    video_reader = mmcv.VideoReader(str(video_path))
+    vid_width, vid_height = video_reader.resolution
+    n_frames = video_reader.frame_cnt
     mask_cube = np.zeros((n_frames, vid_height, vid_width), np.uint8)
     mask_out_path = mask_out_dir / action / pckl.stem
-
-    if generate_videos:
-        frames = video_frames(video_path, reader=conf.active.video.reader)
-        out_frames = []
+    out_frames = []
 
     for vid, video_preds in get_video_frame_iterator(pckl):
         preds_coco, _ = repp(video_preds)
@@ -101,7 +98,7 @@ for pckl in pckl_in_dir.glob("**/*.pckl"):
         boxes = [item["bbox"] for item in total_preds if int(item["image_id"]) == f]
 
         if generate_videos:
-            frame = next(frames)
+            frame = video_reader.read()
 
         for box in boxes:
             x1, y1, w, h = [round(v) for v in box]
@@ -130,7 +127,7 @@ for pckl in pckl_in_dir.glob("**/*.pckl"):
             frames=out_frames,
             target=video_out_path,
             writer=conf.active.video.writer,
-            fps=vid_info["fps"],
+            fps=video_reader.fps,
         )
 
     bar.update(1)
