@@ -21,26 +21,27 @@ from tqdm import tqdm
 root = Path.cwd()
 dataset = conf.active.dataset
 detector = conf.active.detector
-mode = conf.active.mode
+object_conf = str(conf.unidet.detect.confidence)
+method = conf.active.mode
 relevancy_model = conf.active.relevancy.method
 relevancy_threshold = conf.active.relevancy.threshold
 smoothing = conf.active.smooth_mask.enabled
 
 object_selection = conf.active.object_selection
-method = "select" if object_selection else "detect"
-method_dir = root / "data" / dataset / detector / method
+mode = "select" if object_selection else "detect"
+mode_dir = root / "data" / dataset / detector / object_conf / mode
 video_out_ext = conf.repp.output.video.ext
 
-if method == "detect":
-    pckl_in_dir = method_dir / "dump"
-    mask_out_dir = method_dir / "REPP/mask"
-    video_out_dir = root / "data" / dataset / detector / method / "REPP/videos"
-elif method == "select":
-    pckl_in_dir = method_dir / mode / "dump"
-    mask_out_dir = method_dir / mode / "REPP/mask"
-    video_out_dir = root / "data" / dataset / detector / method / mode / "REPP/videos"
+if mode == "detect":
+    pckl_in_dir = mode_dir / "dump"
+    mask_out_dir = mode_dir / "REPP/mask"
+    video_out_dir = root / "data" / dataset / detector / mode / "REPP/videos"
+elif mode == "select":
+    pckl_in_dir = mode_dir / method / "dump"
+    mask_out_dir = mode_dir / method / "REPP/mask"
+    video_out_dir = root / "data" / dataset / detector / mode / method / "REPP/videos"
 
-    if mode == "intercutmix":
+    if method == "intercutmix":
         pckl_in_dir = pckl_in_dir / relevancy_model / str(relevancy_threshold)
         mask_out_dir = mask_out_dir / relevancy_model / str(relevancy_threshold)
 
