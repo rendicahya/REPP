@@ -71,7 +71,7 @@ if not click.confirm("\nDo you want to continue?", show_default=True):
 warnings.filterwarnings("ignore")
 
 n_files = count_files(pckl_in_dir, ext=".pckl")
-bar = tqdm(total=n_files)
+bar = tqdm(total=n_files, dynamic_ncols=True)
 
 for pckl in pckl_in_dir.glob("**/*.pckl"):
     action = pckl.parent.name
