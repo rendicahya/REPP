@@ -10,40 +10,47 @@ import click
 import cv2
 import mmcv
 import numpy as np
+from repp_utils import get_video_frame_iterator
+from tqdm import tqdm
+
 from assertpy.assertpy import assert_that
 from config import settings as conf
 from python_file import count_files
 from python_video import frames_to_video
 from REPP import REPP
-from repp_utils import get_video_frame_iterator
-from tqdm import tqdm
 
 root = Path.cwd()
 dataset = conf.active.dataset
 detector = conf.active.detector
 object_conf = str(conf.unidet.detect.confidence)
 method = conf.active.mode
+use_REPP = conf.active.use_REPP
 relevancy_model = conf.active.relevancy.method
-relevancy_threshold = conf.active.relevancy.threshold
+relevancy_threshold = str(conf.active.relevancy.threshold)
 smoothing = conf.active.smooth_mask.enabled
 
 object_selection = conf.active.object_selection
-mode = "select" if object_selection else "detect"
-mode_dir = root / "data" / dataset / detector / object_conf / mode
+mid_dir = root / "data" / dataset / detector / object_conf / method
 video_out_ext = conf.repp.output.video.ext
 
-if mode == "detect":
-    pckl_in_dir = mode_dir / "dump"
-    mask_out_dir = mode_dir / "REPP/mask"
-    video_out_dir = root / "data" / dataset / detector / mode / "REPP/videos"
-elif mode == "select":
-    pckl_in_dir = mode_dir / method / "dump"
-    mask_out_dir = mode_dir / method / "REPP/mask"
-    video_out_dir = root / "data" / dataset / detector / mode / method / "REPP/videos"
-
-    if method == "intercutmix":
-        pckl_in_dir = pckl_in_dir / relevancy_model / str(relevancy_threshold)
-        mask_out_dir = mask_out_dir / relevancy_model / str(relevancy_threshold)
+if method in ("allcutmix", "actorcutmix"):
+    pckl_in_dir = mid_dir / "dump"
+    mask_out_dir = mid_dir / "REPP/mask"
+    video_out_dir = mid_dir / "REPP/videos"
+else:
+    pckl_in_dir = mid_dir / "dump" / relevancy_model / relevancy_threshold
+    mask_out_dir = (
+        mid_dir
+        / ("REPP/mask" if use_REPP else "mask")
+        / relevancy_model
+        / relevancy_threshold
+    )
+    video_out_dir = (
+        mid_dir
+        / ("REPP/videos" if use_REPP else "videos")
+        / relevancy_model
+        / relevancy_threshold
+    )
 
 repp_conf = conf.repp.configuration
 repp_params = json.load(open(repp_conf, "r"))
