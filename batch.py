@@ -19,73 +19,70 @@ from python_file import count_files
 from python_video import frames_to_video
 from REPP import REPP
 
-root = Path.cwd()
-dataset = conf.active.dataset
-detector = conf.active.detector
-object_conf = str(conf.unidet.detect.confidence)
-method = conf.active.mode
-use_REPP = conf.active.use_REPP
-relevancy_model = conf.active.relevancy.method
-relevancy_threshold = str(conf.active.relevancy.threshold)
-smoothing = conf.active.smooth_mask.enabled
+ROOT = Path.cwd()
+DATASET = conf.active.dataset
+DETECTOR = conf.active.detector
+DET_CONF = str(conf.unidet.detect.confidence)
+METHOD = conf.active.mode
+USE_REPP = conf.active.USE_REPP
+RELEV_MODEL = conf.active.relevancy.method
+RELEV_THRESH = str(conf.active.relevancy.threshold)
+SMOOTHING = conf.active.smooth_mask.enabled
 
-object_selection = conf.active.object_selection
-mid_dir = root / "data" / dataset / detector / object_conf / method
+MID_DIR = ROOT / "data" / DATASET / DETECTOR / DET_CONF / METHOD
 video_out_ext = conf.repp.output.video.ext
 
-if method in ("allcutmix", "actorcutmix"):
-    pckl_in_dir = mid_dir / "dump"
-    mask_out_dir = mid_dir / "REPP/mask"
-    video_out_dir = mid_dir / "REPP/videos"
+if METHOD in ("allcutmix", "actorcutmix"):
+    PCKL_IN_DIR = MID_DIR / "dump"
+    MASK_OUT_DIR = MID_DIR / "REPP/mask"
+    VIDEO_OUT_DIR = MID_DIR / "REPP/videos"
 else:
-    pckl_in_dir = mid_dir / "dump" / relevancy_model / relevancy_threshold
-    mask_out_dir = (
-        mid_dir
-        / ("REPP/mask" if use_REPP else "mask")
-        / relevancy_model
-        / relevancy_threshold
+    PCKL_IN_DIR = MID_DIR / "dump" / RELEV_MODEL / RELEV_THRESH
+    MASK_OUT_DIR = (
+        MID_DIR / ("REPP/mask" if USE_REPP else "mask") / RELEV_MODEL / RELEV_THRESH
     )
-    video_out_dir = (
-        mid_dir
-        / ("REPP/videos" if use_REPP else "videos")
-        / relevancy_model
-        / relevancy_threshold
+    VIDEO_OUT_DIR = (
+        MID_DIR / ("REPP/videos" if USE_REPP else "videos") / RELEV_MODEL / RELEV_THRESH
     )
 
-repp_conf = conf.repp.configuration
-repp_params = json.load(open(repp_conf, "r"))
+REPP_CONF = conf.repp.configuration
+repp_params = json.load(open(REPP_CONF, "r"))
 repp = REPP(**repp_params, store_coco=True)
-generate_videos = conf.repp.output.video.generate
-video_in_ext = conf[dataset].ext
-video_in_dir = root / conf[dataset].path
-gaussian_size = conf.active.smooth_mask.gaussian_size
+GENERATE_VIDEOS = conf.repp.output.video.generate
+VIDEO_EXT = conf[DATASET].ext
+VIDEO_IN_DIR = ROOT / conf[DATASET].path
+GAUSSIAN_SIZE = conf.active.smooth_mask.GAUSSIAN_SIZE
 
-assert_that(pckl_in_dir).is_directory().is_readable()
-assert_that(repp_conf).is_file().is_readable()
+assert_that(PCKL_IN_DIR).is_directory().is_readable()
+assert_that(REPP_CONF).is_file().is_readable()
 
-print("Input:", pckl_in_dir.relative_to(root))
-print("Output:", mask_out_dir.relative_to(root), '(exists)' if mask_out_dir.exists() else '(not exists)')
+print("Input:", PCKL_IN_DIR.relative_to(ROOT))
+print(
+    "Output:",
+    MASK_OUT_DIR.relative_to(ROOT),
+    "(exists)" if MASK_OUT_DIR.exists() else "(not exists)",
+)
 
-if generate_videos:
-    assert_that(video_in_dir).is_directory().is_readable()
+if GENERATE_VIDEOS:
+    assert_that(VIDEO_IN_DIR).is_directory().is_readable()
     assert_that(video_out_ext).is_type_of(str).matches(r"^\.[a-zA-Z0-9]{3}$")
 
-    print(f"Video output: {video_out_dir.relative_to(root)}")
+    print(f"Video output: {VIDEO_OUT_DIR.relative_to(ROOT)}")
 
 if not click.confirm("\nDo you want to continue?", show_default=True):
     exit("Aborted.")
 
 warnings.filterwarnings("ignore")
 
-n_files = count_files(pckl_in_dir, ext=".pckl")
+n_files = count_files(PCKL_IN_DIR, ext=".pckl")
 bar = tqdm(total=n_files, dynamic_ncols=True)
 
-for pckl in pckl_in_dir.glob("**/*.pckl"):
+for pckl in PCKL_IN_DIR.glob("**/*.pckl"):
     action = pckl.parent.name
     total_preds = []
 
-    video_name = pckl.with_suffix(video_in_ext).name
-    video_path = video_in_dir / action / video_name
+    video_name = pckl.with_suffix(VIDEO_EXT).name
+    video_path = VIDEO_IN_DIR / action / video_name
 
     if not video_path.exists():
         print("Video not found:", video_path)
@@ -95,7 +92,7 @@ for pckl in pckl_in_dir.glob("**/*.pckl"):
     vid_width, vid_height = video_reader.resolution
     n_frames = video_reader.frame_cnt
     mask_cube = np.zeros((n_frames, vid_height, vid_width), np.uint8)
-    mask_out_path = mask_out_dir / action / pckl.stem
+    mask_out_path = MASK_OUT_DIR / action / pckl.stem
     out_frames = []
 
     for vid, video_preds in get_video_frame_iterator(pckl):
@@ -105,7 +102,7 @@ for pckl in pckl_in_dir.glob("**/*.pckl"):
     for f in range(n_frames):
         boxes = [item["bbox"] for item in total_preds if int(item["image_id"]) == f]
 
-        if generate_videos:
+        if GENERATE_VIDEOS:
             frame = video_reader.read()
 
         for box in boxes:
@@ -113,22 +110,22 @@ for pckl in pckl_in_dir.glob("**/*.pckl"):
             x2, y2 = x1 + w, y1 + h
             mask_cube[f, y1:y2, x1:x2] = 255
 
-            if smoothing:
+            if SMOOTHING:
                 mask_cube[f] = cv2.GaussianBlur(
-                    mask_cube[f], (gaussian_size, gaussian_size), 0
+                    mask_cube[f], (GAUSSIAN_SIZE, GAUSSIAN_SIZE), 0
                 )
 
-            if generate_videos:
+            if GENERATE_VIDEOS:
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 0), 2)
 
-        if generate_videos:
+        if GENERATE_VIDEOS:
             out_frames.append(frame)
 
     mask_out_path.parent.mkdir(exist_ok=True, parents=True)
     np.savez_compressed(mask_out_path, mask_cube)
 
-    if generate_videos:
-        video_out_path = video_out_dir / action / pckl.with_suffix(video_out_ext).name
+    if GENERATE_VIDEOS:
+        video_out_path = VIDEO_OUT_DIR / action / pckl.with_suffix(video_out_ext).name
 
         video_out_path.parent.mkdir(parents=True, exist_ok=True)
         frames_to_video(
