@@ -64,7 +64,7 @@ assert_that(pckl_in_dir).is_directory().is_readable()
 assert_that(repp_conf).is_file().is_readable()
 
 print("Input:", pckl_in_dir.relative_to(root))
-print("Output:", mask_out_dir.relative_to(root))
+print("Output:", mask_out_dir.relative_to(root), '(exists)' if mask_out_dir.exists() else '(not exists)')
 
 if generate_videos:
     assert_that(video_in_dir).is_directory().is_readable()
